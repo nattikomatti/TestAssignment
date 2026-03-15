@@ -1,6 +1,173 @@
 @ApprovalFlow_HostAddress = http://localhost:5258
 
-GET {{ApprovalFlow_HostAddress}}/weatherforecast/
+
+# คำขอที่ 1: ยังไม่มีใครอนุมัติ (Pending ทั้งหมด)
+@requestId1 = a1b2c3d4-0001-0000-0000-000000000001
+# คำขอที่ 2: Manager อนุมัติแล้ว รอ Director
+@requestId2 = a1b2c3d4-0002-0000-0000-000000000002
+# คำขอที่ 3: อนุมัติครบ + ส่ง ERP แล้ว
+@requestId3 = a1b2c3d4-0003-0000-0000-000000000003
+
+# ==========================================
+# 1️ ดูคำขอทั้งหมด
+# ==========================================
+GET {{ApprovalFlow_HostAddress}}/api/approval
+Accept: application/json
+
+###
+
+# ==========================================
+# 2️ ดูคำขอตาม ID (คำขอที่ 1 - ยังไม่มีใครอนุมัติ)
+# ==========================================
+GET {{ApprovalFlow_HostAddress}}/api/approval/{{requestId1}}
+Accept: application/json
+
+###
+
+# ==========================================
+# 3️ สร้างคำขออนุมัติใหม่
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval
+Content-Type: application/json
+
+{
+  "title": "ขออนุมัติจัดซื้อเซิร์ฟเวอร์",
+  "description": "ขอจัดซื้อ Server 2 เครื่อง งบประมาณ 300,000 บาท",
+  "requestedBy": "ธนพล"
+}
+
+###
+
+# ==========================================
+# 4️⃣ อนุมัติคำขอที่ 1 - ขั้นตอน Manager
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId1}}/approve
+Content-Type: application/json
+
+{
+  "approvedBy": "วิชัย (Manager)",
+  "approverRole": "Manager"
+}
+
+###
+
+# ==========================================
+# 5️⃣ อนุมัติคำขอที่ 1 - ขั้นตอน Director
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId1}}/approve
+Content-Type: application/json
+
+{
+  "approvedBy": "ประยุทธ์ (Director)",
+  "approverRole": "Director"
+}
+
+###
+
+# ==========================================
+# 6️⃣ อนุมัติคำขอที่ 1 - ขั้นตอน Finance (ส่ง ERP)
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId1}}/approve
+Content-Type: application/json
+
+{
+  "approvedBy": "มาลี (Finance)",
+  "approverRole": "Finance"
+}
+
+###
+
+# ==========================================
+# 7️⃣ ทดสอบ Approve ผิด Role (ต้อง error)
+#    คำขอที่ 2 รอ Director แต่ส่ง Finance
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId2}}/approve
+Content-Type: application/json
+
+{
+  "approvedBy": "มาลี (Finance)",
+  "approverRole": "Finance"
+}
+
+###
+
+# ==========================================
+# 8️⃣ Undo: ยกเลิก Manager ของคำขอที่ 2
+#    (step ล่าสุดที่ approve → ยกเลิกได้)
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId2}}/undo
+Content-Type: application/json
+
+{
+  "requestedBy": "สมหญิง",
+  "reason": "ข้อมูลงบประมาณไม่ถูกต้อง ต้องแก้ไขใหม่"
+}
+
+###
+
+# ==========================================
+# 9️⃣ Undo: ยกเลิก Finance ของคำขอที่ 3
+#    (ข้อมูลส่ง ERP แล้ว → ต้อง rollback ERP)
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId3}}/undo
+Content-Type: application/json
+
+{
+  "requestedBy": "วิภา",
+  "reason": "พบข้อผิดพลาดในสัญญา ต้องแก้ไขเงื่อนไขก่อน"
+}
+
+###
+
+# ==========================================
+# 🔟 ดูคำขอที่ 3 หลัง Undo (สถานะควรเปลี่ยน)
+# ==========================================
+GET {{ApprovalFlow_HostAddress}}/api/approval/{{requestId3}}
+Accept: application/json
+
+###
+
+# ==========================================
+# 1️⃣1️⃣ ดูประวัติ (Audit Trail) ของคำขอที่ 3
+# ==========================================
+GET {{ApprovalFlow_HostAddress}}/api/approval/{{requestId3}}/history
+Accept: application/json
+
+###
+
+# ==========================================
+# 1️⃣2️⃣ Undo ซ้ำ: ยกเลิก Director ของคำขอที่ 3
+#     (หลัง undo Finance แล้ว Director เป็น step ล่าสุด)
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId3}}/undo
+Content-Type: application/json
+
+{
+  "requestedBy": "วิภา",
+  "reason": "ยกเลิกทั้งหมดเพื่อเริ่มกระบวนการใหม่"
+}
+
+###
+
+# ==========================================
+# 1️⃣3️⃣ Approve ใหม่หลัง Undo (คำขอที่ 2)
+#     ทดสอบว่า step ที่ Undone สามารถ approve ใหม่ได้
+# ==========================================
+POST {{ApprovalFlow_HostAddress}}/api/approval/{{requestId2}}/approve
+Content-Type: application/json
+
+{
+  "approvedBy": "วิชัย (Manager)",
+  "approverRole": "Manager"
+}
+
+###
+
+# ==========================================
+# 1️⃣4️⃣ ดูประวัติ (Audit Trail) ของคำขอที่ 2
+#     ควรเห็น: Approve → Undo → Approve
+# ==========================================
+GET {{ApprovalFlow_HostAddress}}/api/approval/{{requestId2}}/history
 Accept: application/json
 
 ###

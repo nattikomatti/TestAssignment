@@ -1,4 +1,5 @@
 using Pre_register.Data;
+using Pre_register.Extensions;
 using Pre_register.Infrastructure;
 using Pre_register.Repositories;
 using Pre_register.Repositories.Interfaces;
@@ -12,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Data - Singleton เพราะใช้ข้อมูลจำลอง in-memory
+// Data - Singleton เพราะใช้ข้อมูลจำลอง  
 builder.Services.AddSingleton<AppDbContext>();
 
 // Infrastructure
@@ -20,13 +21,9 @@ builder.Services.AddSingleton<TokenGenerator>();
 builder.Services.AddSingleton<QRCodeGenerator>();
 builder.Services.AddSingleton<LprService>();
 
-// Repositories
-builder.Services.AddSingleton<IVisitorRepository, VisitorRepository>();
-builder.Services.AddSingleton<IGateLogRepository, GateLogRepository>();
 
-// Services
-builder.Services.AddScoped<IVisitorService, VisitorService>();
-builder.Services.AddScoped<IGateService, GateService>();
+builder.Services.RegisterDependencies();
+ 
 
 var app = builder.Build();
 
