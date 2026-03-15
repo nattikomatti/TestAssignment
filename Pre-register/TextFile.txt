@@ -1,0 +1,3 @@
+﻿1.	Pre-register → POST /api/visitor/pre-register ส่งชื่อ, บริษัท, ทะเบียนรถ → ระบบสร้าง Token + QR ให้
+2.	มาถึงหน้างาน → กล้อง LPR อ่านป้ายทะเบียน → POST /api/gate/verify-plate หรือสแกน QR → POST /api/gate/verify-qr
+3.	ระบบตรวจสอบ → ถ้าข้อมูลตรง + ยังไม่หมดอายุ → เปิดไม้กั้น + อัปเดต status เป็น CheckedIn + บันทึก GateLog
