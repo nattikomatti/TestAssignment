@@ -1,6 +1,144 @@
 @OrderProcessing_HostAddress = http://localhost:5017
 
-GET {{OrderProcessing_HostAddress}}/weatherforecast/
+# Product IDs (seed data)
+@productId1 = f0000001-0001-0000-0000-000000000001
+@productId2 = f0000001-0002-0000-0000-000000000002
+@productId3 = f0000001-0003-0000-0000-000000000003
+@productId4 = f0000001-0004-0000-0000-000000000004
+
+# Existing order from seed data
+@orderId1 = d0000001-0001-0000-0000-000000000001
+
+# ==========================================
+# 1️ ดูสินค้าทั้งหมด
+# ==========================================
+GET {{OrderProcessing_HostAddress}}/api/orders/products
+Accept: application/json
+
+###
+
+# ==========================================
+# 2️ ดูคำสั่งซื้อทั้งหมด
+# ==========================================
+GET {{OrderProcessing_HostAddress}}/api/orders
+Accept: application/json
+
+###
+
+# ==========================================
+# 3️ ดูคำสั่งซื้อตาม ID
+# ==========================================
+GET {{OrderProcessing_HostAddress}}/api/orders/{{orderId1}}
+Accept: application/json
+
+###
+
+# ==========================================
+# 4️ สั่งซื้อปกติ (iPhone + AirPods)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "สมชาย ใจดี",
+  "items": [
+    { "productId": "{{productId2}}", "quantity": 1 },
+    { "productId": "{{productId3}}", "quantity": 2 }
+  ]
+}
+
+###
+
+# ==========================================
+# 5️ สั่งซื้อ + คูปอง DIS10 (ส่วนลด 10%)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "สมหญิง รักดี",
+  "couponCode": "DIS10",
+  "items": [
+    { "productId": "{{productId1}}", "quantity": 1 }
+  ]
+}
+
+###
+
+# ==========================================
+# 6️ สั่งซื้อ + Idempotency Key (ป้องกัน charge ซ้ำ)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "วิชัย สร้างสรรค์",
+  "idempotencyKey": "unique-key-001",
+  "items": [
+    { "productId": "{{productId3}}", "quantity": 3 }
+  ]
+}
+
+###
+
+# ==========================================
+# 7️ ส่งซ้ำ Idempotency Key เดิม (ต้องได้ผลลัพธ์เดิม ไม่ charge ซ้ำ)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "วิชัย สร้างสรรค์",
+  "idempotencyKey": "unique-key-001",
+  "items": [
+    { "productId": "{{productId3}}", "quantity": 3 }
+  ]
+}
+
+###
+
+# ==========================================
+# 8️ สั่งซื้อ stock ไม่พอ (iPad Air มีแค่ 3 ชิ้น)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "ทดสอบ Stock",
+  "items": [
+    { "productId": "{{productId4}}", "quantity": 999 }
+  ]
+}
+
+###
+
+# ==========================================
+# 9️ สั่งซื้อ + คูปองหมดอายุ (ต้อง error + คืน stock)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "customerName": "ทดสอบ Coupon",
+  "couponCode": "EXPIRED01",
+  "items": [
+    { "productId": "{{productId3}}", "quantity": 1 }
+  ]
+}
+
+###
+
+# ==========================================
+# 🔟 ยกเลิกคำสั่งซื้อ (คืนเงิน + คืน stock)
+# ==========================================
+POST {{OrderProcessing_HostAddress}}/api/orders/{{orderId1}}/cancel
+
+###
+
+# ==========================================
+# 1️⃣1️⃣ ดูสินค้าหลังทดสอบ (เช็ค stock)
+# ==========================================
+GET {{OrderProcessing_HostAddress}}/api/orders/products
 Accept: application/json
 
 ###

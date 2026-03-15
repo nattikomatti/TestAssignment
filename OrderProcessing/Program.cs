@@ -1,3 +1,9 @@
+using OrderProcessing.Data;
+using OrderProcessing.Extensions;
+using OrderProcessing.Infrastructure;
+using OrderProcessing.Integrations;
+using StackExchange.Redis;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +11,20 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+
+// Redis
+var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+builder.Services.AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(redisConnection));
+
+// Infrastructure (Singleton)
+builder.Services.AddSingleton<AppDbContext>();
+builder.Services.AddSingleton<RedisCacheService>();
+builder.Services.AddSingleton<DistributedLockService>();
+builder.Services.AddSingleton<IdempotencyService>();
+builder.Services.AddSingleton<PaymentGatewayClient>();
+
+// Services & Repositories (Scoped - auto-registered)
+builder.Services.RegisterDependencies();
 
 var app = builder.Build();
 
