@@ -16,7 +16,7 @@ public class GateService(
 
         if (visitor is null)
         {
-            LogGateAccess(null, request.PlateNumber, AccessMethod.LPR, false);
+            LogGateAccess(null, request.PlateNumber, AccessMethod.LPR, GateAction.Entry, false, "ไม่พบข้อมูลการลงทะเบียน");
             return new GateAccessResponse
             {
                 IsAllowed = false,
@@ -24,7 +24,7 @@ public class GateService(
             };
         }
 
-        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.LPR, true);
+        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.LPR, GateAction.Entry, true, "อนุญาตเข้า");
         visitor.Status = VisitorStatus.CheckedIn;
         visitorRepository.Update(visitor);
 
@@ -44,7 +44,7 @@ public class GateService(
 
         if (visitor is null)
         {
-            LogGateAccess(null, "", AccessMethod.QR, false);
+            LogGateAccess(null, "", AccessMethod.QR, GateAction.Entry, false, "ไม่พบข้อมูลการลงทะเบียน");
             return new GateAccessResponse
             {
                 IsAllowed = false,
@@ -52,7 +52,7 @@ public class GateService(
             };
         }
 
-        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.QR, true);
+        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.QR, GateAction.Entry, true, "อนุญาตเข้า");
         visitor.Status = VisitorStatus.CheckedIn;
         visitorRepository.Update(visitor);
 
@@ -66,16 +66,72 @@ public class GateService(
         };
     }
 
-    private void LogGateAccess(Visitor? visitor, string plateNumber, AccessMethod method, bool isSuccess)
+    public GateAccessResponse ExitByPlate(VerifyPlateRequest request)
+    {
+        var visitor = visitorRepository.GetCheckedInByPlateNumber(request.PlateNumber);
+
+        if (visitor is null)
+        {
+            LogGateAccess(null, request.PlateNumber, AccessMethod.LPR, GateAction.Exit, false, "ไม่พบข้อมูลการลงทะเบียน");
+            return new GateAccessResponse
+            {
+                IsAllowed = false,
+                Message = "ไม่พบข้อมูลการลงทะเบียนสำหรับทะเบียนรถนี้"
+            };
+        }
+
+        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.LPR, GateAction.Exit, true, "อนุญาตออก");
+        visitor.Status = VisitorStatus.CheckedOut;
+        visitorRepository.Update(visitor);
+
+        return new GateAccessResponse
+        {
+            IsAllowed = true,
+            Message = "เปิดไม้กั้น - ขอบคุณที่มาเยี่ยมชม",
+            VisitorName = visitor.FullName,
+            Company = visitor.Company,
+            ContactPerson = visitor.ContactPerson
+        };
+    }
+
+    public GateAccessResponse ExitByQr(string token)
+    {
+        var visitor = visitorRepository.GetCheckedInByToken(token);
+
+        if (visitor is null)
+        {
+            LogGateAccess(null, "", AccessMethod.QR, GateAction.Exit, false, "ไม่พบข้อมูลการลงทะเบียน");
+            return new GateAccessResponse
+            {
+                IsAllowed = false,
+                Message = "QR Code ไม่ถูกต้องหรือยังไม่ได้เช็คอินเข้า"
+            };
+        }
+
+        LogGateAccess(visitor, visitor.PlateNumber, AccessMethod.QR, GateAction.Exit, true, "อนุญาตออก");
+        visitor.Status = VisitorStatus.CheckedOut;
+        visitorRepository.Update(visitor);
+
+        return new GateAccessResponse
+        {
+            IsAllowed = true,
+            Message = "เปิดไม้กั้น - ขอบคุณที่มาเยี่ยมชม",
+            VisitorName = visitor.FullName,
+            Company = visitor.Company,
+            ContactPerson = visitor.ContactPerson
+        };
+    }
+
+    private void LogGateAccess(Visitor? visitor, string plateNumber, AccessMethod method, GateAction action, bool isSuccess, string reason)
     {
         gateLogRepository.Add(new GateLog
         {
             VisitorId = visitor?.Id ?? Guid.Empty,
             PlateNumber = plateNumber,
-            Action = GateAction.Entry,
+            Action = action,
             Method = method,
             IsSuccess = isSuccess,
-            Reason = isSuccess ? "อนุญาตเข้า" : "ไม่พบข้อมูลการลงทะเบียน"
+            Reason = reason
         });
     }
 }

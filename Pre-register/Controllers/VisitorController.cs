@@ -22,10 +22,5 @@ public class VisitorController(IVisitorService visitorService) : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id:guid}")]
-    public IActionResult GetById(Guid id)
-    {
-        var result = visitorService.GetById(id);
-        return result is null ? NotFound() : Ok(result);
-    }
+   
 }

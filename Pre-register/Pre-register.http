@@ -1,38 +1,39 @@
 @Pre_register_HostAddress = http://localhost:5021
 
-### ============================================
+
 ### 0. ดูข้อมูลระบบ + รายการ Endpoints
-### ============================================
+
 
 GET {{Pre_register_HostAddress}}/api
 Accept: application/json
 
-### ============================================
+
 ### 1. ดูรายชื่อผู้ลงทะเบียนทั้งหมด (mock data)
-### ============================================
+
 
 GET {{Pre_register_HostAddress}}/api/visitor
 Accept: application/json
 
-### ============================================
-### 2. Pre-register ผู้มาติดต่อคนใหม่
-### ============================================
+ 
+
+### 2.  ผู้มาติดต่อคนใหม่
+
 
 POST {{Pre_register_HostAddress}}/api/visitor/pre-register
 Content-Type: application/json
 
 {
-  "fullName": "วิศวกร ทดสอบระบบ",
-  "company": "บริษัท Demo จำกัด",
-  "plateNumber": "ฌญ 4321",
+  "fullName": "ทดสอบอิอิ ทดสอบระบบ",
+  "company": "บริษัท ทดสอบ จำกัด",
+  "plateNumber": "กก 4321",
   "purpose": "ประชุมโปรเจกต์",
   "contactPerson": "ผู้จัดการฝ่าย IT",
   "visitDate": "{{$datetime iso8601}}"
 }
 
-### ============================================
-### 3. ตรวจสอบทะเบียนรถผ่าน LPR (mock data - ควร PASS)
-### ============================================
+
+### 3.1 ตรวจสอบทะเบียนรถผ่านิ (mock data - ต้อง PASS)
+
 
 POST {{Pre_register_HostAddress}}/api/gate/verify-plate
 Content-Type: application/json
@@ -40,10 +41,18 @@ Content-Type: application/json
 {
   "plateNumber": "กข 1234"
 }
+### 3.2
+POST {{Pre_register_HostAddress}}/api/gate/verify-plate
+Content-Type: application/json
 
-### ============================================
+{
+  "plateNumber": "กก 4321"
+}
+
+
+
 ### 4. ตรวจสอบทะเบียนรถที่ไม่มีในระบบ (ควร FAIL)
-### ============================================
+
 
 POST {{Pre_register_HostAddress}}/api/gate/verify-plate
 Content-Type: application/json
@@ -52,32 +61,67 @@ Content-Type: application/json
   "plateNumber": "ไม่มี 0000"
 }
 
-### ============================================
+
 ### 5. ตรวจสอบ QR Code / Token (mock data - ควร PASS)
-### ============================================
+
 
 POST {{Pre_register_HostAddress}}/api/gate/verify-qr?token=TOKEN-002
 Accept: application/json
 
-### ============================================
+
 ### 6. ตรวจสอบ QR Code ที่หมดอายุ (ควร FAIL)
-### ============================================
+
 
 POST {{Pre_register_HostAddress}}/api/gate/verify-qr?token=TOKEN-003
 Accept: application/json
 
-### ============================================
-### 7. ตรวจสอบ QR Code ที่ไม่มีในระบบ (ควร FAIL)
-### ============================================
+
+### 7. ตรวจสอบ QR Code ที่ไม่มีในระบบ (  FAIL)
+
 
 POST {{Pre_register_HostAddress}}/api/gate/verify-qr?token=INVALID-TOKEN
 Accept: application/json
 
-### ============================================
-### 8. ดู Gate Logs ทั้งหมด
-### ============================================
 
+### 8. ดู Gate Logs ทั้งหมด
 GET {{Pre_register_HostAddress}}/api/gate/logs
 Accept: application/json
+
+
+### 9. ขาออก - ตรวจสอบทะเบียนรถ (mock data - ต้อง PASS)
+
+
+POST {{Pre_register_HostAddress}}/api/gate/exit-plate
+Content-Type: application/json
+
+{
+  "plateNumber": "กข 1234"
+}
+
+###
+POST {{Pre_register_HostAddress}}/api/gate/exit-plate
+Content-Type: application/json
+
+{
+  "plateNumber": "กก 4321"
+}
+
+### 10. ขาออก - ตรวจสอบทะเบียนรถที่ไม่มีในระบบ (ควร FAIL)
+
+
+POST {{Pre_register_HostAddress}}/api/gate/exit-plate
+Content-Type: application/json
+
+{
+  "plateNumber": "ไม่มี 0000"
+}
+
+
+### 11. ขาออก - ตรวจสอบ QR Code (mock data - ต้อง PASS)
+
+
+POST {{Pre_register_HostAddress}}/api/gate/exit-qr?token=TOKEN-002
+Accept: application/json
+
 
 ###

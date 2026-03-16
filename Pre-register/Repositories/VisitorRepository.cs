@@ -22,6 +22,16 @@ public class VisitorRepository(AppDbContext dbContext) : IVisitorRepository
             && v.Status == VisitorStatus.Approved
             && v.ExpiryDate >= DateTime.Today);
 
+    public Visitor? GetCheckedInByPlateNumber(string plateNumber) =>
+        dbContext.Visitors.FirstOrDefault(v =>
+            v.PlateNumber.Equals(plateNumber, StringComparison.OrdinalIgnoreCase)
+            && v.Status == VisitorStatus.CheckedIn);
+
+    public Visitor? GetCheckedInByToken(string token) =>
+        dbContext.Visitors.FirstOrDefault(v =>
+            v.Token == token
+            && v.Status == VisitorStatus.CheckedIn);
+
     public Visitor Add(Visitor visitor)
     {
         visitor.Id = Guid.NewGuid();

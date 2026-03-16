@@ -8,6 +8,8 @@ public interface IVisitorRepository
     Visitor? GetById(Guid id);
     Visitor? GetByPlateNumber(string plateNumber);
     Visitor? GetByToken(string token);
+    Visitor? GetCheckedInByPlateNumber(string plateNumber);
+    Visitor? GetCheckedInByToken(string token);
     Visitor Add(Visitor visitor);
     Visitor? Update(Visitor visitor);
 }

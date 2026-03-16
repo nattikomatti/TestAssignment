@@ -23,6 +23,20 @@ public class GateController(IGateService gateService, IGateLogRepository gateLog
         return Ok(result);
     }
 
+    [HttpPost("exit-plate")]
+    public IActionResult ExitByPlate([FromBody] VerifyPlateRequest request)
+    {
+        var result = gateService.ExitByPlate(request);
+        return Ok(result);
+    }
+
+    [HttpPost("exit-qr")]
+    public IActionResult ExitByQr([FromQuery] string token)
+    {
+        var result = gateService.ExitByQr(token);
+        return Ok(result);
+    }
+
     [HttpGet("logs")]
     public IActionResult GetLogs()
     {

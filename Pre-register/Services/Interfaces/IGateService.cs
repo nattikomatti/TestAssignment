@@ -7,4 +7,6 @@ public interface IGateService
 {
     GateAccessResponse VerifyByPlate(VerifyPlateRequest request);
     GateAccessResponse VerifyByQr(string token);
+    GateAccessResponse ExitByPlate(VerifyPlateRequest request);
+    GateAccessResponse ExitByQr(string token);
 }

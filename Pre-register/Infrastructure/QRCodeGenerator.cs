@@ -4,6 +4,6 @@ public class QRCodeGenerator
 {
     public string Generate(string token)
     {
-        return $"PRE-REG:{token}";
+        return $"TESTTOKEN:{token}";
     }
 }
