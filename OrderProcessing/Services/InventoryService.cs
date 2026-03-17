@@ -5,10 +5,10 @@ using OrderProcessing.Services.Interfaces;
 
 namespace OrderProcessing.Services
 {
-    /// <summary>
+   
     /// แยก Inventory logic ออกจาก OrderService เพื่อให้ test ง่าย
     /// ใช้ Redis cache สำหรับ product lookup → รองรับ 3,000 order/นาที
-    /// </summary>
+ 
     public class InventoryService(IProductRepository productRepo, RedisCacheService cache) : IInventoryService
     {
         private static readonly TimeSpan CacheExpiry = TimeSpan.FromMinutes(5);

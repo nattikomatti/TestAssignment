@@ -24,10 +24,11 @@ namespace OrderProcessing.Services
     {
         public async Task<OrderResponse> CreateOrderAsync(CreateOrderRequest request)
         {
-            // ═══════════════════════════════════════════════════════════
+            
             // 1. Idempotency Check (แก้: charge ซ้ำ)
-            //    ถ้า request เดิมเคยสำเร็จแล้ว → คืนผลลัพธ์เดิมจาก Redis
-            // ═══════════════════════════════════════════════════════════
+            //    ตรวจ Redis ก่อน ถ้าไม่เจอ fallback ตรวจ DB
+            //    ป้องกัน charge ซ้ำแม้ Redis key จะหมดอายุแล้ว
+          
             if (!string.IsNullOrEmpty(request.IdempotencyKey))
             {
                 var existing = await idempotencyService.GetResultAsync<OrderResponse>(request.IdempotencyKey);
@@ -36,21 +37,36 @@ namespace OrderProcessing.Services
                     existing.Message = "คำสั่งซื้อนี้ถูกประมวลผลไปแล้ว (idempotent)";
                     return existing;
                 }
+
+                // Redis key หมดอายุแล้ว → fallback ตรวจ DB
+                var existingOrder = orderRepo.GetByIdempotencyKey(request.IdempotencyKey);
+                if (existingOrder is not null)
+                {
+                    var cachedResponse = new OrderResponse
+                    {
+                        Success = true,
+                        Message = "คำสั่งซื้อนี้ถูกประมวลผลไปแล้ว (idempotent)",
+                        Data = MapToDetail(existingOrder)
+                    };
+                    // Re-cache กลับ Redis เพื่อไม่ให้ตี DB ซ้ำในครั้งต่อไป
+                    await idempotencyService.MarkProcessedAsync(request.IdempotencyKey, cachedResponse);
+                    return cachedResponse;
+                }
             }
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 2. Validate Request
-            // ═══════════════════════════════════════════════════════════
+            
             if (string.IsNullOrWhiteSpace(request.CustomerName))
                 return Fail("กรุณาระบุชื่อลูกค้า");
 
             if (request.Items is null || request.Items.Count == 0)
                 return Fail("กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ");
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 3. Distributed Lock (แก้: stock ติดลบ)
-            //    ล็อกตาม product IDs → ป้องกัน concurrent deduct stock
-            // ═══════════════════════════════════════════════════════════
+            //    ล็อกตาม product IDs > ป้องกัน concurrent deduct stock
+            
             var lockResource = string.Join(",",
                 request.Items.Select(i => i.ProductId).OrderBy(id => id));
 
@@ -60,9 +76,9 @@ namespace OrderProcessing.Services
             if (distributedLock is null)
                 return Fail("ระบบไม่ว่าง กรุณาลองใหม่อีกครั้ง");
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 4. Check stock & build order items (ภายใน lock)
-            // ═══════════════════════════════════════════════════════════
+            
             decimal totalAmount = 0;
             var orderItems = new List<OrderItem>();
 
@@ -86,9 +102,9 @@ namespace OrderProcessing.Services
                 totalAmount += product.Price * item.Quantity;
             }
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 5. Reserve stock (ภายใน lock — atomic)
-            // ═══════════════════════════════════════════════════════════
+            
             var reservedItems = new List<OrderItemRequest>();
             foreach (var item in request.Items)
             {
@@ -102,9 +118,9 @@ namespace OrderProcessing.Services
                 reservedItems.Add(item);
             }
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 6. Apply Coupon (data-driven แทน hard-coded)
-            // ═══════════════════════════════════════════════════════════
+            
             decimal discountAmount = 0;
             if (!string.IsNullOrEmpty(request.CouponCode))
             {
@@ -121,9 +137,9 @@ namespace OrderProcessing.Services
 
             var finalAmount = totalAmount - discountAmount;
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 7. Create Order entity (ยังไม่บันทึกจนกว่า payment สำเร็จ)
-            // ═══════════════════════════════════════════════════════════
+            
             var order = new Order
             {
                 CustomerName = request.CustomerName,
@@ -139,10 +155,10 @@ namespace OrderProcessing.Services
                 item.OrderId = order.Id;
             order.Items = orderItems;
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 8. Process Payment (แก้: order บันทึกแต่ payment ล้มเหลว)
             //    ถ้า payment fail → compensation: คืน stock ทั้งหมด
-            // ═══════════════════════════════════════════════════════════
+            
             var paymentResult = await paymentService.ProcessPaymentAsync(
                 request.CustomerName, finalAmount);
 
@@ -158,9 +174,9 @@ namespace OrderProcessing.Services
                 return Fail($"การชำระเงินล้มเหลว: {paymentResult.ErrorMessage ?? "กรุณาลองใหม่"}");
             }
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 9. Payment success → บันทึก order สถานะ Completed
-            // ═══════════════════════════════════════════════════════════
+            
             order.PaymentTransactionId = paymentResult.TransactionId;
             order.Status = OrderStatus.Completed;
             orderRepo.Add(order);
@@ -172,9 +188,9 @@ namespace OrderProcessing.Services
                 Data = MapToDetail(order)
             };
 
-            // ═══════════════════════════════════════════════════════════
+            
             // 10. Mark Idempotency (ป้องกัน charge ซ้ำ)
-            // ═══════════════════════════════════════════════════════════
+            
             if (!string.IsNullOrEmpty(request.IdempotencyKey))
                 await idempotencyService.MarkProcessedAsync(request.IdempotencyKey, successResponse);
 
@@ -190,9 +206,9 @@ namespace OrderProcessing.Services
             return new OrderResponse { Success = true, Data = MapToDetail(order) };
         }
 
-        public List<OrderDetailResponse> GetAll()
+        public Task<List<OrderDetailResponse>> GetAll()
         {
-            return orderRepo.GetAll().Select(MapToDetail).ToList();
+            return Task.FromResult(orderRepo.GetAll().Select(MapToDetail).ToList());
         }
 
         public async Task<OrderResponse> CancelOrderAsync(Guid id)

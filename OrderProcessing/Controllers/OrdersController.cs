@@ -8,7 +8,7 @@ namespace OrderProcessing.Controllers
     [Route("api/[controller]")]
     public class OrdersController(IOrderService orderService, IInventoryService inventoryService) : ControllerBase
     {
-        /// ดูสินค้าทั้งหมด
+        // ดูสินค้าทั้งหมด
         [HttpGet("products")]
         public async Task<IActionResult> GetProducts()
         {
@@ -16,14 +16,14 @@ namespace OrderProcessing.Controllers
             return Ok(products);
         }
 
-        /// ดูคำสั่งซื้อทั้งหมด
+        // ดูคำสั่งซื้อทั้งหมด
         [HttpGet]
-        public IActionResult GetAll()
+        public async Task<IActionResult> GetAll()
         {
-            return Ok(orderService.GetAll());
+            return Ok( await  orderService.GetAll());
         }
 
-        /// ดูคำสั่งซื้อตาม ID
+        // ดูคำสั่งซื้อตาม ID
         [HttpGet("{id:guid}")]
         public IActionResult GetById(Guid id)
         {
@@ -31,7 +31,7 @@ namespace OrderProcessing.Controllers
             return result.Success ? Ok(result) : NotFound(result);
         }
 
-        /// สร้างคำสั่งซื้อใหม่ (พร้อม idempotency + distributed lock)
+        // สร้างคำสั่งซื้อใหม่ (พร้อม idempotency + distributed lock)
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateOrderRequest request)
         {
@@ -41,7 +41,7 @@ namespace OrderProcessing.Controllers
                 : BadRequest(result);
         }
 
-        /// ยกเลิกคำสั่งซื้อ (คืนเงิน + คืน stock)
+        // ยกเลิกคำสั่งซื้อ (คืนเงิน + คืน stock)
         [HttpPost("{id:guid}/cancel")]
         public async Task<IActionResult> Cancel(Guid id)
         {

@@ -7,7 +7,7 @@ namespace OrderProcessing.Services.Interfaces
     {
         Task<OrderResponse> CreateOrderAsync(CreateOrderRequest request);
         OrderResponse GetById(Guid id);
-        List<OrderDetailResponse> GetAll();
+        Task<List<OrderDetailResponse>> GetAll();
         Task<OrderResponse> CancelOrderAsync(Guid id);
     }
 }

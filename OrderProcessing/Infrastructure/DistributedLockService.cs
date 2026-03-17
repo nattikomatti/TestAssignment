@@ -1,10 +1,10 @@
 ﻿namespace OrderProcessing.Infrastructure
 {
-    /// <summary>
+ 
     /// แก้ปัญหา: Stock ติดลบ
     /// ใช้ Redis SETNX เป็น distributed lock ป้องกัน race condition
     /// เมื่อหลาย request สั่งซื้อสินค้าเดียวกันพร้อมกัน
-    /// </summary>
+   
     public class DistributedLockService(RedisCacheService cache)
     {
         public async Task<DistributedLock?> AcquireLockAsync(
